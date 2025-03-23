@@ -1,34 +1,60 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState, useEffect } from 'react'
+import { IntroScreen } from './components/IntroScreen'
+import { FactionSelect } from './components/FactionSelect'
+import { GameLayout } from './components/GameLayout'
 import './App.css'
 
+type GameState = 'intro' | 'faction-select' | 'game'
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [width, setWidth] = useState(window.innerWidth)
+  const [height, setHeight] = useState(window.innerHeight)
+  const [gameState, setGameState] = useState<GameState>('intro')
+  const [selectedFaction, setSelectedFaction] = useState<string>('')
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWidth(window.innerWidth)
+      setHeight(window.innerHeight)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const handleBegin = () => {
+    setGameState('faction-select')
+  }
+
+  const handleFactionSelect = (faction: string) => {
+    setSelectedFaction(faction)
+    setGameState('game')
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {gameState === 'intro' && (
+        <IntroScreen
+          width={width}
+          height={height}
+          onBegin={handleBegin}
+        />
+      )}
+      {gameState === 'faction-select' && (
+        <FactionSelect
+          width={width}
+          height={height}
+          onSelectFaction={handleFactionSelect}
+        />
+      )}
+      {gameState === 'game' && (
+        <GameLayout
+          width={width}
+          height={height}
+          faction={selectedFaction}
+        />
+      )}
+    </div>
   )
 }
 

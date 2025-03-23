@@ -1,3 +1,50 @@
+# HOTNET - Heroes of the Net
+
+A cyberpunk-themed strategy game featuring four distinct factions battling for control in a futuristic digital landscape.
+
+## Tech Stack
+
+- React 18.2.0
+- TypeScript
+- PixiJS 7.3.2
+- @pixi/react 7.1.1
+- Vite
+
+## Features
+
+- Four unique factions with distinct playstyles:
+  - Netrunners (Hackers): Elite digital infiltration specialists
+  - Cyborgs (Enhanced): Augmented humans with cybernetic enhancements
+  - Rogue AI (Artificial): Sentient AI systems
+  - Megacorps (Corporate): Powerful corporate entities
+- Cyberpunk-themed UI with neon accents and grid backgrounds
+- Responsive canvas-based gameplay
+- Modern event handling system
+- Comprehensive debugging features
+
+## Getting Started
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## Development
+
+- Built with TypeScript in strict mode
+- Follows React best practices
+- Implements comprehensive error handling
+- Maintains detailed console logging for debugging
+
+## License
+
+MIT
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
