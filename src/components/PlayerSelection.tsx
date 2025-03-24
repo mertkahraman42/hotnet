@@ -1,31 +1,15 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { factions, PLAYER_COLORS } from '../types/faction';
 
-interface FactionSelectProps {
-  playerCount: number;
-  onFactionsSelected: (factions: string[]) => void;
+interface PlayerSelectionProps {
+  onPlayerCountSelected: (count: number) => void;
   width: number;
   height: number;
 }
 
-export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFactionsSelected, width, height }) => {
+export const PlayerSelection: React.FC<PlayerSelectionProps> = ({ onPlayerCountSelected, width, height }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
-  const [currentPlayer, setCurrentPlayer] = useState(1);
-  const [selectedFactions, setSelectedFactions] = useState<string[]>([]);
-
-  const handleFactionSelect = useCallback((faction: string) => {
-    const newSelectedFactions = [...selectedFactions, faction];
-    
-    if (currentPlayer < playerCount) {
-      setSelectedFactions(newSelectedFactions);
-      setCurrentPlayer(currentPlayer + 1);
-    } else {
-      // All players have selected their factions
-      onFactionsSelected(newSelectedFactions);
-    }
-  }, [currentPlayer, playerCount, selectedFactions, onFactionsSelected]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -74,7 +58,7 @@ export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFac
     const titleStyle = new TextStyle({
       fontFamily: 'monospace',
       fontSize: Math.min(64, height * 0.08),
-      fill: PLAYER_COLORS[`player${currentPlayer}` as keyof typeof PLAYER_COLORS],
+      fill: '#00ff00',
       stroke: '#003300',
       strokeThickness: 2,
       dropShadow: true,
@@ -84,35 +68,29 @@ export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFac
       dropShadowDistance: 6,
     });
 
-    const title = new Text('Select Your Faction', titleStyle);
+    const title = new Text('HoTNET - Select Player Count', titleStyle);
     title.anchor.set(0.5);
     title.x = width / 2;
     title.y = titleHeight / 2;
     titleContainer.addChild(title);
 
-    // Add player selection text
-    const playerText = new Text(
-      `Player ${currentPlayer} Selection${selectedFactions.length > 0 ? ` (Previous: ${selectedFactions.map((f, i) => `P${i + 1}: ${factions[f as keyof typeof factions].emoji}`).join(', ')})` : ''}`,
-      new TextStyle({
-        fontFamily: 'monospace',
-        fontSize: Math.min(32, height * 0.04),
-        fill: PLAYER_COLORS[`player${currentPlayer}` as keyof typeof PLAYER_COLORS],
-      })
-    );
-    playerText.anchor.set(0.5);
-    playerText.x = width / 2;
-    playerText.y = titleHeight - 20;
-    titleContainer.addChild(playerText);
-    
-    // Create content container for faction boxes
+    // Create content container for player count boxes
     const contentContainer = new Container();
     contentContainer.y = titleHeight;
+
+    // Player count options
+    const playerCounts = [
+      { count: 1, description: 'Solo challenge against AI opponents' },
+      { count: 2, description: 'Head-to-head tactical combat' },
+      { count: 3, description: 'Three-way strategic warfare' },
+      { count: 4, description: 'Full-scale network domination' }
+    ];
 
     // Calculate box dimensions
     const boxWidth = (width - contentPadding * 3) / 2;
     const boxHeight = (contentHeight - contentPadding * 3) / 2;
 
-    Object.values(factions).forEach((faction, index) => {
+    playerCounts.forEach((option, index) => {
       const container = new Container();
       
       // Calculate grid position
@@ -123,15 +101,14 @@ export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFac
 
       // Create box
       const box = new Graphics();
-      const playerColor = parseInt(PLAYER_COLORS[`player${currentPlayer}` as keyof typeof PLAYER_COLORS].replace('#', '0x'));
-      box.lineStyle(3, playerColor);
+      box.lineStyle(3, 0x00ff00);
       box.beginFill(0x0a0a0a);
       box.drawRect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight);
       box.endFill();
 
       // Add diagonal lines in corners
       const cornerSize = Math.min(20, boxWidth * 0.05);
-      box.lineStyle(2, playerColor);
+      box.lineStyle(2, 0x00ff00);
       // Top left
       box.moveTo(-boxWidth/2, -boxHeight/2 + cornerSize);
       box.lineTo(-boxWidth/2, -boxHeight/2);
@@ -149,30 +126,30 @@ export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFac
       box.lineTo(boxWidth/2, boxHeight/2);
       box.lineTo(boxWidth/2, boxHeight/2 - cornerSize);
 
-      // Add faction name with emoji
-      const nameStyle = new TextStyle({
+      // Add player count text
+      const countStyle = new TextStyle({
         fontFamily: 'monospace',
         fontSize: Math.min(36, boxHeight * 0.12),
-        fill: PLAYER_COLORS[`player${currentPlayer}` as keyof typeof PLAYER_COLORS],
+        fill: '#00ff00',
         stroke: '#000000',
         strokeThickness: 1,
       });
 
-      const name = new Text(`${faction.emoji} ${faction.name}`, nameStyle);
-      name.anchor.set(0.5);
-      name.y = -boxHeight/2 + boxHeight * 0.15;
+      const countText = new Text(`${option.count} Player${option.count > 1 ? 's' : ''}`, countStyle);
+      countText.anchor.set(0.5);
+      countText.y = -boxHeight/2 + boxHeight * 0.15;
 
       // Add description
       const descStyle = new TextStyle({
         fontFamily: 'monospace',
         fontSize: Math.min(24, boxHeight * 0.08),
-        fill: PLAYER_COLORS[`player${currentPlayer}` as keyof typeof PLAYER_COLORS],
+        fill: '#00ff00',
         align: 'center',
         wordWrap: true,
         wordWrapWidth: boxWidth * 0.8,
       });
 
-      const description = new Text(faction.description, descStyle);
+      const description = new Text(option.description, descStyle);
       description.anchor.set(0.5);
       description.y = 0;
 
@@ -182,7 +159,7 @@ export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFac
       
       box.on('mouseover', () => {
         box.clear();
-        box.lineStyle(3, playerColor);
+        box.lineStyle(3, 0x00ff00);
         box.beginFill(0x1a1a1a);
         box.drawRect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight);
         box.endFill();
@@ -190,18 +167,18 @@ export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFac
 
       box.on('mouseout', () => {
         box.clear();
-        box.lineStyle(3, playerColor);
+        box.lineStyle(3, 0x00ff00);
         box.beginFill(0x0a0a0a);
         box.drawRect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight);
         box.endFill();
       });
 
       box.on('click', () => {
-        handleFactionSelect(faction.id);
+        onPlayerCountSelected(option.count);
       });
 
       container.addChild(box);
-      container.addChild(name);
+      container.addChild(countText);
       container.addChild(description);
       container.x = x;
       container.y = y;
@@ -216,7 +193,7 @@ export const FactionSelect: React.FC<FactionSelectProps> = ({ playerCount, onFac
       app.destroy(true);
       appRef.current = null;
     };
-  }, [width, height, currentPlayer, selectedFactions, handleFactionSelect]);
+  }, [width, height, onPlayerCountSelected]);
 
   return (
     <div 

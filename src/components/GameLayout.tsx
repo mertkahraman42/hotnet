@@ -1,13 +1,28 @@
 import React, { useRef } from 'react';
 import { GameScreen, GameScreenHandle } from './GameScreen';
+import { PLAYER_COLORS, factions } from '../types/faction';
+
+type OctagonPosition = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+
+const POSITION_PRIORITY: OctagonPosition[][] = [
+  [],  // 0 players
+  ['N'],  // 1 player
+  ['N', 'S'],  // 2 players
+  ['N', 'SE', 'SW'],  // 3 players
+  ['N', 'E', 'S', 'W'],  // 4 players
+  ['N', 'E', 'SE', 'SW', 'W'],  // 5 players
+  ['N', 'NE', 'SE', 'S', 'SW', 'NW'],  // 6 players
+  ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W'],  // 7 players
+  ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']  // 8 players
+];
 
 interface GameLayoutProps {
   width: number;
   height: number;
-  faction: string;
+  playerFactions: string[];
 }
 
-export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, faction }) => {
+export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, playerFactions }) => {
   const gameScreenRef = useRef<GameScreenHandle>(null);
   
   // Determine if we're in mobile view (portrait mode)
@@ -29,26 +44,14 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, faction }
   const handleSpawnUnit = (type: 'Basic' | 'Advanced' | 'Special') => {
     if (!gameScreenRef.current) return;
 
-    // Determine spawn corner based on faction
-    let spawnCorner: 'tl' | 'tr' | 'bl' | 'br';
-    switch (faction) {
-      case 'Netrunners':
-        spawnCorner = 'tl';
-        break;
-      case 'Cyborgs':
-        spawnCorner = 'tr';
-        break;
-      case 'Rogue AI':
-        spawnCorner = 'bl';
-        break;
-      case 'Megacorps':
-        spawnCorner = 'br';
-        break;
-      default:
-        spawnCorner = 'tl';
+    // Get the active positions for current player count
+    const activePositions = POSITION_PRIORITY[playerFactions.length] || [];
+    
+    // For now, just spawn in first player's position
+    // TODO: Implement turn system to determine which player is active
+    if (activePositions.length > 0) {
+      gameScreenRef.current.spawnUnit(type, activePositions[0]);
     }
-
-    gameScreenRef.current.spawnUnit(type, spawnCorner);
   };
 
   return (
@@ -71,7 +74,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, faction }
         padding: '0 20px',
         fontSize: '16px'
       }}>
-        <span>Score: 0 | Kills: 0</span>
+        <span>Active Players: {playerFactions.length} | Score: 0 | Kills: 0</span>
         <span style={{ marginLeft: 'auto' }}>Credits: 1000</span>
       </div>
 
@@ -79,117 +82,154 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, faction }
       <div style={{ 
         flex: 1, 
         display: 'flex', 
-        flexDirection: isMobile ? 'column' : 'row'
+        flexDirection: 'row',
+        overflow: 'hidden' // Hide overflow to manage scroll
       }}>
         {/* Game Screen */}
         <div style={{ 
           width: `${gameWidth}px`, 
-          height: `${gameHeight}px`
+          height: `${gameHeight}px`,
+          flexShrink: 0 // Prevent shrinking
         }}>
           <GameScreen 
             ref={gameScreenRef}
             width={gameWidth} 
             height={gameHeight} 
-            faction={faction} 
+            playerFactions={playerFactions}
           />
         </div>
 
-        {/* Action Column/Row */}
+        {/* Player Control Bars */}
         <div style={{
-          width: `${actionWidth}px`,
-          height: isMobile ? `${actionHeight}px` : '100%',
-          backgroundColor: '#0a0a0a',
-          borderLeft: isMobile ? 'none' : '1px solid #00ff00',
-          borderTop: isMobile ? '1px solid #00ff00' : 'none',
           display: 'flex',
-          flexDirection: 'column',
-          padding: '10px',
-          gap: '10px'
+          flexDirection: 'row',
+          overflowX: 'auto', // Enable horizontal scroll
+          flexGrow: 1 // Allow control bars to fill remaining space
         }}>
-          {/* Upgrades Section */}
-          <div style={{ 
-            flex: isMobile ? '0 0 65px' : 1,
-            display: 'flex', 
-            flexDirection: isMobile ? 'row' : 'column',
-            justifyContent: isMobile ? 'space-between' : 'flex-start',
-            gap: '10px',
-            padding: '0 5px'
-          }}>
-            <button style={{
-              ...buttonStyle,
-              ...(isMobile && { minWidth: `${mobileButtonWidth}px` }),
-              ...(!isMobile && { width: '100%' })
-            }}>Damage +1</button>
-            <button style={{
-              ...buttonStyle,
-              ...(isMobile && { minWidth: `${mobileButtonWidth}px` }),
-              ...(!isMobile && { width: '100%' })
-            }}>Speed +1</button>
-            <button style={{
-              ...buttonStyle,
-              ...(isMobile && { minWidth: `${mobileButtonWidth}px` }),
-              ...(!isMobile && { width: '100%' })
-            }}>Range +1</button>
-            <button style={{
-              ...buttonStyle,
-              ...(isMobile && { minWidth: `${mobileButtonWidth}px` }),
-              ...(!isMobile && { width: '100%' })
-            }}>Health +1</button>
-          </div>
+          {playerFactions.map((faction, index) => (
+            <div key={index} style={{
+              width: `${actionWidth}px`,
+              height: '100%',
+              backgroundColor: '#0a0a0a',
+              borderLeft: '1px solid #00ff00',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '10px',
+              gap: '10px',
+              color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS]
+            }}>
+              {/* Player Title */}
+              <div style={{
+                textAlign: 'center',
+                fontWeight: 'bold',
+                marginBottom: '10px'
+              }}>
+                Player {index + 1} - {faction} {factions[faction as keyof typeof factions].emoji}
+              </div>
 
-          {/* Divider */}
-          <div style={{
-            width: 'auto',
-            height: '1px',
-            backgroundColor: '#00ff00',
-            opacity: 0.5,
-            margin: '0 5px'
-          }} />
+              {/* Upgrades Section */}
+              <div style={{ 
+                flex: 1,
+                display: 'flex', 
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                gap: '10px',
+                padding: '0 5px'
+              }}>
+                <button style={{
+                  ...buttonStyle,
+                  borderColor: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  width: '100%'
+                }}>⚔️ Damage +1</button>
+                <button style={{
+                  ...buttonStyle,
+                  borderColor: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  width: '100%'
+                }}>💨 Speed +1</button>
+                <button style={{
+                  ...buttonStyle,
+                  borderColor: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  width: '100%'
+                }}>🎯 Range +1</button>
+                <button style={{
+                  ...buttonStyle,
+                  borderColor: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                  width: '100%'
+                }}>❤️ Health +1</button>
+              </div>
 
-          {/* Minion Spawns Section */}
-          <div style={{ 
-            flex: isMobile ? '0 0 65px' : 1,
-            display: 'flex', 
-            flexDirection: isMobile ? 'row' : 'column',
-            justifyContent: isMobile ? 'space-between' : 'flex-start',
-            gap: '10px',
-            padding: '0 5px'
-          }}>
-            <button 
-              style={{
-                ...buttonStyle,
-                ...(isMobile && { minWidth: `${mobileButtonWidth}px` }),
-                ...(!isMobile && { width: '100%' })
-              }}
-              onClick={() => handleSpawnUnit('Basic')}
-            >
-              Basic Unit<br/>
-              <span style={{ fontSize: '12px' }}>Cost: 100</span>
-            </button>
-            <button 
-              style={{
-                ...buttonStyle,
-                ...(isMobile && { minWidth: `${mobileButtonWidth}px` }),
-                ...(!isMobile && { width: '100%' })
-              }}
-              onClick={() => handleSpawnUnit('Advanced')}
-            >
-              Advanced Unit<br/>
-              <span style={{ fontSize: '12px' }}>Cost: 300</span>
-            </button>
-            <button 
-              style={{
-                ...buttonStyle,
-                ...(isMobile && { minWidth: `${mobileButtonWidth}px` }),
-                ...(!isMobile && { width: '100%' })
-              }}
-              onClick={() => handleSpawnUnit('Special')}
-            >
-              Special Unit<br/>
-              <span style={{ fontSize: '12px' }}>Cost: 500</span>
-            </button>
-            {isMobile && <div style={{ minWidth: `${mobileButtonWidth}px` }} />} {/* Spacer for mobile only */}
-          </div>
+              {/* Divider */}
+              <div style={{
+                width: 'auto',
+                height: '1px',
+                backgroundColor: '#00ff00',
+                opacity: 0.5,
+                margin: '0 5px'
+              }} />
+
+              {/* Minion Spawns Section */}
+              <div style={{ 
+                flex: 1,
+                display: 'flex', 
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                gap: '10px',
+                padding: '0 5px'
+              }}>
+                <button 
+                  style={{
+                    ...buttonStyle,
+                    borderColor: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                    color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                    width: '100%'
+                  }}
+                  onClick={() => handleSpawnUnit('Basic')}
+                >
+                  🛡️ Basic Unit<br/>
+                  <span style={{ fontSize: '12px' }}>Cost: 100</span>
+                </button>
+                <button 
+                  style={{
+                    ...buttonStyle,
+                    borderColor: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                    color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                    width: '100%'
+                  }}
+                  onClick={() => handleSpawnUnit('Advanced')}
+                >
+                  ⚙️ Advanced Unit<br/>
+                  <span style={{ fontSize: '12px' }}>Cost: 300</span>
+                </button>
+                <button 
+                  style={{
+                    ...buttonStyle,
+                    borderColor: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                    color: PLAYER_COLORS[`player${index + 1}` as keyof typeof PLAYER_COLORS],
+                    width: '100%'
+                  }}
+                  onClick={() => handleSpawnUnit('Special')}
+                >
+                  🚀 Special Unit<br/>
+                  <span style={{ fontSize: '12px' }}>Cost: 500</span>
+                </button>
+              </div>
+
+              {/* Scoreboard and Resources */}
+              <div style={{
+                marginTop: 'auto',
+                borderTop: '1px solid #00ff00',
+                padding: '10px 0',
+                textAlign: 'center'
+              }}>
+                <span>Score: 0 | Kills: 0</span><br/>
+                <span>Credits: 1000</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -212,10 +252,7 @@ const buttonStyle: React.CSSProperties = {
   minWidth: '120px',
   flex: '0 0 auto',
   transition: 'all 0.2s',
-  ':hover': {
-    backgroundColor: '#001100',
-    boxShadow: '0 0 10px #00ff00'
-  }
+  ':hover': undefined,
 };
 
 export default GameLayout; 

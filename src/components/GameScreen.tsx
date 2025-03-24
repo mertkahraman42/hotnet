@@ -2,18 +2,33 @@ import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react
 import { Application, Container, Graphics, Point } from 'pixi.js';
 import { BaseUnit } from '../units/BaseUnit';
 import { FactionType } from '../types/units';
+import { PLAYER_COLORS } from '../types/faction';
+
+type OctagonPosition = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+
+const POSITION_PRIORITY: OctagonPosition[][] = [
+  [],  // 0 players
+  ['N'],  // 1 player
+  ['N', 'S'],  // 2 players
+  ['N', 'SE', 'SW'],  // 3 players
+  ['N', 'E', 'S', 'W'],  // 4 players
+  ['N', 'E', 'SE', 'SW', 'W'],  // 5 players
+  ['N', 'NE', 'SE', 'S', 'SW', 'NW'],  // 6 players
+  ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W'],  // 7 players
+  ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']  // 8 players
+];
 
 interface GameScreenProps {
   width: number;
   height: number;
-  faction: string;
+  playerFactions: string[];
 }
 
 export interface GameScreenHandle {
-  spawnUnit: (type: 'Basic' | 'Advanced' | 'Special', spawnCorner: 'tl' | 'tr' | 'bl' | 'br') => void;
+  spawnUnit: (type: 'Basic' | 'Advanced' | 'Special', position: OctagonPosition) => void;
 }
 
-export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width, height, faction }, ref) => {
+export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width, height, playerFactions }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const unitsRef = useRef<BaseUnit[]>([]);
@@ -57,7 +72,7 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
   };
 
   // Function to spawn a unit
-  const spawnUnit = (type: 'Basic' | 'Advanced' | 'Special', spawnCorner: 'tl' | 'tr' | 'bl' | 'br') => {
+  const spawnUnit = (type: 'Basic' | 'Advanced' | 'Special', position: OctagonPosition) => {
     if (!appRef.current || !unitsContainerRef.current || !gameContainerRef.current) return;
 
     const mapSize = Math.min(width, height);
@@ -65,23 +80,35 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
 
     // Calculate spawn position based on corner
     let spawnPosition: Point;
-    switch (spawnCorner) {
-      case 'tl':
-        spawnPosition = new Point(cornerOffset, cornerOffset);
+    switch (position) {
+      case 'N':
+        spawnPosition = new Point(mapSize / 2, cornerOffset);
         break;
-      case 'tr':
+      case 'NE':
         spawnPosition = new Point(mapSize - cornerOffset, cornerOffset);
         break;
-      case 'bl':
+      case 'E':
+        spawnPosition = new Point(mapSize - cornerOffset, mapSize - cornerOffset);
+        break;
+      case 'SE':
         spawnPosition = new Point(cornerOffset, mapSize - cornerOffset);
         break;
-      case 'br':
-        spawnPosition = new Point(mapSize - cornerOffset, mapSize - cornerOffset);
+      case 'S':
+        spawnPosition = new Point(cornerOffset, cornerOffset);
+        break;
+      case 'SW':
+        spawnPosition = new Point(cornerOffset, cornerOffset);
+        break;
+      case 'W':
+        spawnPosition = new Point(cornerOffset, cornerOffset);
+        break;
+      case 'NW':
+        spawnPosition = new Point(cornerOffset, cornerOffset);
         break;
     }
 
     // Create new unit
-    const unit = new BaseUnit(faction as FactionType, type, spawnPosition);
+    const unit = new BaseUnit(playerFactions[0] as FactionType, type, spawnPosition);
     
     // Set initial target to center
     const centerPoint = new Point(mapSize / 2, mapSize / 2);
@@ -93,7 +120,7 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
 
     console.log('Spawned unit:', {
       type,
-      corner: spawnCorner,
+      corner: position,
       position: spawnPosition,
       target: centerPoint,
       mapSize,
@@ -136,81 +163,85 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
 
     // Calculate map dimensions
     const mapSize = Math.min(width, height);
-    const cornerSize = mapSize * 0.35;
-    const centerSize = mapSize * 0.22;
-
-    // Center the map
-    gameContainer.x = (width - mapSize) / 2;
-    gameContainer.y = (height - mapSize) / 2;
-
-    // Draw background grid
-    const grid = new Graphics();
-    grid.lineStyle(1, 0x00ff00, 0.1);
+    const centerX = mapSize / 2;
+    const centerY = mapSize / 2;
+    const radius = mapSize * 0.45; // Slightly smaller than half to fit in view
+    const innerRadius = radius * 0.7; // For the inner octagon
     
-    const gridSize = 40;
-    for (let x = 0; x <= mapSize; x += gridSize) {
-      grid.moveTo(x, 0);
-      grid.lineTo(x, mapSize);
-    }
-    for (let y = 0; y <= mapSize; y += gridSize) {
-      grid.moveTo(0, y);
-      grid.lineTo(mapSize, y);
-    }
-    
-    gameContainer.addChild(grid);
-
-    // Draw the map elements
-    const map = new Graphics();
-    
-    // Define corner colors
-    const cornerColors: Record<string, number> = {
-      'Netrunners': 0x00ff00,
-      'Cyborgs': 0x00ffff,
-      'Rogue AI': 0xff00ff,
-      'Megacorps': 0xffff00,
+    // Helper function to calculate octagon points
+    const getOctagonPoints = (radius: number) => {
+      const points: Point[] = [];
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4 - Math.PI / 8; // -PI/8 to align N to top
+        points.push(new Point(
+          centerX + radius * Math.cos(angle),
+          centerY + radius * Math.sin(angle)
+        ));
+      }
+      return points;
     };
 
-    // Helper function to draw a right triangle corner
-    const drawCorner = (x: number, y: number, isRight: boolean, isBottom: boolean) => {
-      map.beginFill(0x1a1a1a);
-      map.lineStyle(2, cornerColors[faction] || 0x00ff00, 0.8);
+    // Draw outer octagon (game boundary)
+    const outerPoints = getOctagonPoints(radius);
+    const map = new Graphics();
+    map.lineStyle(2, 0x00ff00, 0.5);
+    map.beginFill(0x0a0a0a);
+    map.moveTo(outerPoints[0].x, outerPoints[0].y);
+    for (let i = 1; i < 8; i++) {
+      map.lineTo(outerPoints[i].x, outerPoints[i].y);
+    }
+    map.closePath();
+    map.endFill();
+
+    // Draw inner octagon (center area)
+    const innerPoints = getOctagonPoints(innerRadius);
+    map.lineStyle(2, 0x00ff00, 1);
+    map.beginFill(0x1a1a1a);
+    map.moveTo(innerPoints[0].x, innerPoints[0].y);
+    for (let i = 1; i < 8; i++) {
+      map.lineTo(innerPoints[i].x, innerPoints[i].y);
+    }
+    map.closePath();
+    map.endFill();
+
+    // Draw player sections
+    const activePositions = POSITION_PRIORITY[playerFactions.length] || [];
+    const positionToIndex: Record<OctagonPosition, number> = {
+      'N': 0, 'NE': 1, 'E': 2, 'SE': 3, 'S': 4, 'SW': 5, 'W': 6, 'NW': 7
+    };
+
+    // Draw sections between inner and outer octagon
+    for (let i = 0; i < 8; i++) {
+      const position = Object.keys(positionToIndex).find(
+        key => positionToIndex[key as OctagonPosition] === i
+      ) as OctagonPosition;
+
+      const isActive = activePositions.includes(position);
+      const playerIndex = activePositions.indexOf(position);
       
-      // Start at corner point
-      map.moveTo(x, y);
+      map.lineStyle(2, isActive 
+        ? parseInt(PLAYER_COLORS[`player${playerIndex + 1}` as keyof typeof PLAYER_COLORS].replace('#', '0x'))
+        : parseInt(PLAYER_COLORS.inactive.replace('#', '0x')), 
+        isActive ? 0.8 : 0.3
+      );
       
-      // Draw right triangle based on position
-      if (isRight) {
-        // Right side corners
-        map.lineTo(x - cornerSize, y); // Horizontal line
-        map.lineTo(x, isBottom ? y - cornerSize : y + cornerSize); // Vertical line
-      } else {
-        // Left side corners
-        map.lineTo(x + cornerSize, y); // Horizontal line
-        map.lineTo(x, isBottom ? y - cornerSize : y + cornerSize); // Vertical line
-      }
-      
+      map.beginFill(isActive ? 0x1a1a1a : 0x666666, isActive ? 0.5 : 0.2);
+      map.moveTo(innerPoints[i].x, innerPoints[i].y);
+      map.lineTo(outerPoints[i].x, outerPoints[i].y);
+      map.lineTo(outerPoints[(i + 1) % 8].x, outerPoints[(i + 1) % 8].y);
+      map.lineTo(innerPoints[(i + 1) % 8].x, innerPoints[(i + 1) % 8].y);
       map.closePath();
       map.endFill();
-    };
+    }
 
-    // Draw all corners with right triangles
-    drawCorner(0, 0, false, false); // Top-left
-    drawCorner(mapSize, 0, true, false); // Top-right
-    drawCorner(0, mapSize, false, true); // Bottom-left
-    drawCorner(mapSize, mapSize, true, true); // Bottom-right
-
-    // Draw center circle with glow effect
+    // Draw center glow
     const centerGlow = new Graphics();
+    const glowRadius = innerRadius * 0.7;
     for (let i = 15; i >= 0; i--) {
       centerGlow.beginFill(0x00ff00, 0.04 - (i * 0.002));
-      centerGlow.drawCircle(mapSize / 2, mapSize / 2, centerSize + (i * 2));
+      centerGlow.drawCircle(centerX, centerY, glowRadius + (i * 2));
       centerGlow.endFill();
     }
-    
-    map.beginFill(0x1a1a1a);
-    map.lineStyle(2, 0x00ff00, 1);
-    map.drawCircle(mapSize / 2, mapSize / 2, centerSize);
-    map.endFill();
 
     gameContainer.addChild(centerGlow);
     gameContainer.addChild(map);
@@ -223,7 +254,7 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
       // Update all units
       unitsRef.current.forEach(unit => {
         if (unit.isAlive()) {
-          unit.update((delta / 60) * 10); // Convert to seconds and multiply by 3 for faster movement
+          unit.update((delta / 60) * 20); // Convert to seconds and multiply by 20 for faster movement
           
           // Check collisions with other units
           unitsRef.current.forEach(otherUnit => {
@@ -252,7 +283,7 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
       appRef.current = null;
       unitsRef.current = [];
     };
-  }, [width, height, faction]);
+  }, [width, height, playerFactions]);
 
   return (
     <div 

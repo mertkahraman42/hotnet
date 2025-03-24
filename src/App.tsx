@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { IntroScreen } from './components/IntroScreen'
+import { PlayerSelection } from './components/PlayerSelection'
 import { FactionSelect } from './components/FactionSelect'
 import { GameLayout } from './components/GameLayout'
 import './App.css'
 
-type GameState = 'intro' | 'faction-select' | 'game'
+type GameState = 'intro' | 'player-select' | 'faction-select' | 'game'
 
 function App() {
   const [width, setWidth] = useState(window.innerWidth)
   const [height, setHeight] = useState(window.innerHeight)
   const [gameState, setGameState] = useState<GameState>('intro')
-  const [selectedFaction, setSelectedFaction] = useState<string>('')
+  const [playerCount, setPlayerCount] = useState(1)
+  const [selectedFactions, setSelectedFactions] = useState<string[]>([])
 
   useEffect(() => {
     const handleResize = () => {
@@ -23,11 +25,16 @@ function App() {
   }, [])
 
   const handleBegin = () => {
+    setGameState('player-select')
+  }
+
+  const handlePlayerCountSelect = (count: number) => {
+    setPlayerCount(count)
     setGameState('faction-select')
   }
 
-  const handleFactionSelect = (faction: string) => {
-    setSelectedFaction(faction)
+  const handleFactionsSelected = (factions: string[]) => {
+    setSelectedFactions(factions)
     setGameState('game')
   }
 
@@ -40,18 +47,26 @@ function App() {
           onBegin={handleBegin}
         />
       )}
+      {gameState === 'player-select' && (
+        <PlayerSelection
+          width={width}
+          height={height}
+          onPlayerCountSelected={handlePlayerCountSelect}
+        />
+      )}
       {gameState === 'faction-select' && (
         <FactionSelect
           width={width}
           height={height}
-          onSelectFaction={handleFactionSelect}
+          playerCount={playerCount}
+          onFactionsSelected={handleFactionsSelected}
         />
       )}
       {gameState === 'game' && (
         <GameLayout
           width={width}
           height={height}
-          faction={selectedFaction}
+          playerFactions={selectedFactions}
         />
       )}
     </div>
