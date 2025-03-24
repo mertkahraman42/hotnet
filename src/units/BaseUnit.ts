@@ -1,5 +1,6 @@
 import { Container, Graphics, Point, Text } from 'pixi.js';
 import { IUnit, UnitStats, UnitState, FactionType, BASE_UNIT_STATS, FACTION_MODIFIERS } from '../types/units';
+import { PLAYER_COLORS } from '../types/faction';
 import { v4 as uuidv4 } from 'uuid';
 
 export class BaseUnit extends Container implements IUnit {
@@ -9,6 +10,7 @@ export class BaseUnit extends Container implements IUnit {
     stats: UnitStats;
     state: UnitState;
     radius: number;
+    playerIndex: number;
     
     private body: Graphics;
     private healthBar: Graphics;
@@ -17,13 +19,15 @@ export class BaseUnit extends Container implements IUnit {
     constructor(
         faction: FactionType,
         type: 'Basic' | 'Advanced' | 'Special',
-        position: Point
+        position: Point,
+        playerIndex: number
     ) {
         super();
         
         this.id = uuidv4();
         this.faction = faction;
         this.type = type;
+        this.playerIndex = playerIndex;
         
         // Set radius based on unit type
         this.radius = 10; // Base size for all units
@@ -125,13 +129,8 @@ export class BaseUnit extends Container implements IUnit {
     }
 
     private getFactionColor(): number {
-        switch (this.faction) {
-            case 'Netrunners': return 0x00ff00;
-            case 'Cyborgs': return 0x00ffff;
-            case 'Rogue AI': return 0xff00ff;
-            case 'Megacorps': return 0xffff00;
-            default: return 0x00ff00;
-        }
+        const colorKey = `player${this.playerIndex + 1}` as keyof typeof PLAYER_COLORS;
+        return parseInt(PLAYER_COLORS[colorKey].replace('#', '0x'));
     }
 
     // IUnit interface implementation

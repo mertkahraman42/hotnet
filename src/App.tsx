@@ -20,8 +20,23 @@ function App() {
       setHeight(window.innerHeight)
     }
 
+    const handleSetGameState = (event: CustomEvent<GameState>) => {
+      setGameState(event.detail);
+    }
+
+    const handleSetPlayerFactions = (event: CustomEvent<string[]>) => {
+      setSelectedFactions(event.detail);
+    }
+
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    window.addEventListener('setGameState', handleSetGameState as EventListener)
+    window.addEventListener('setPlayerFactions', handleSetPlayerFactions as EventListener)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('setGameState', handleSetGameState as EventListener)
+      window.removeEventListener('setPlayerFactions', handleSetPlayerFactions as EventListener)
+    }
   }, [])
 
   const handleBegin = () => {

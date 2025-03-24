@@ -1,5 +1,6 @@
 import { Application, Graphics, Text, TextStyle, Container } from 'pixi.js';
 import { useCallback, useEffect, useRef } from 'react';
+import { factions } from '../types/faction';
 
 interface IntroScreenProps {
   width: number;
@@ -106,47 +107,53 @@ export const IntroScreen = ({ width, height, onBegin }: IntroScreenProps) => {
     subtitle.anchor.set(0.5);
 
     // Create BEGIN button
-    const buttonWidth = 200;
+    const buttonWidth = 250;
     const buttonHeight = 60;
     const button = new Graphics();
+    const quickstartButton = new Graphics();
     
     // Function to draw button in different states
-    const drawButton = (isHover: boolean) => {
-      button.clear();
-      button.lineStyle(3, 0x00ff00);
-      button.beginFill(isHover ? 0x003300 : 0x0a0a0a);
-      button.drawRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight);
-      button.endFill();
+    const drawButton = (graphics: Graphics, isHover: boolean) => {
+      graphics.clear();
+      graphics.lineStyle(3, 0x00ff00);
+      graphics.beginFill(isHover ? 0x003300 : 0x0a0a0a);
+      graphics.drawRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight);
+      graphics.endFill();
 
       // Add diagonal lines in corners for cyberpunk effect
       const cornerSize = 15;
-      button.lineStyle(2, 0x00ff00);
+      graphics.lineStyle(2, 0x00ff00);
       // Top left
-      button.moveTo(-buttonWidth/2, -buttonHeight/2 + cornerSize);
-      button.lineTo(-buttonWidth/2, -buttonHeight/2);
-      button.lineTo(-buttonWidth/2 + cornerSize, -buttonHeight/2);
+      graphics.moveTo(-buttonWidth/2, -buttonHeight/2 + cornerSize);
+      graphics.lineTo(-buttonWidth/2, -buttonHeight/2);
+      graphics.lineTo(-buttonWidth/2 + cornerSize, -buttonHeight/2);
       // Top right
-      button.moveTo(buttonWidth/2 - cornerSize, -buttonHeight/2);
-      button.lineTo(buttonWidth/2, -buttonHeight/2);
-      button.lineTo(buttonWidth/2, -buttonHeight/2 + cornerSize);
+      graphics.moveTo(buttonWidth/2 - cornerSize, -buttonHeight/2);
+      graphics.lineTo(buttonWidth/2, -buttonHeight/2);
+      graphics.lineTo(buttonWidth/2, -buttonHeight/2 + cornerSize);
       // Bottom left
-      button.moveTo(-buttonWidth/2, buttonHeight/2 - cornerSize);
-      button.lineTo(-buttonWidth/2, buttonHeight/2);
-      button.lineTo(-buttonWidth/2 + cornerSize, buttonHeight/2);
+      graphics.moveTo(-buttonWidth/2, buttonHeight/2 - cornerSize);
+      graphics.lineTo(-buttonWidth/2, buttonHeight/2);
+      graphics.lineTo(-buttonWidth/2 + cornerSize, buttonHeight/2);
       // Bottom right
-      button.moveTo(buttonWidth/2 - cornerSize, buttonHeight/2);
-      button.lineTo(buttonWidth/2, buttonHeight/2);
-      button.lineTo(buttonWidth/2, buttonHeight/2 - cornerSize);
+      graphics.moveTo(buttonWidth/2 - cornerSize, buttonHeight/2);
+      graphics.lineTo(buttonWidth/2, buttonHeight/2);
+      graphics.lineTo(buttonWidth/2, buttonHeight/2 - cornerSize);
     };
 
     button.x = width / 2;
     button.y = height * 0.7;
-    drawButton(false);
+    drawButton(button, false);
+
+    // Add quickstart button below BEGIN
+    quickstartButton.x = width / 2;
+    quickstartButton.y = height * 0.7 + buttonHeight + 20; // 20px gap
+    drawButton(quickstartButton, false);
 
     // Add button text
     const buttonStyle = new TextStyle({
       fontFamily: 'Share Tech Mono',
-      fontSize: 36,
+      fontSize: 32,
       fill: '#00ff00',
       stroke: '#003300',
       strokeThickness: 1,
@@ -157,23 +164,57 @@ export const IntroScreen = ({ width, height, onBegin }: IntroScreenProps) => {
     buttonText.x = width / 2;
     buttonText.y = height * 0.7;
 
-    // Make button interactive
+    // Add quickstart button text
+    const quickstartText = new Text('Quickstart 3 Players', {
+      ...buttonStyle,
+      fontSize: 22
+    });
+    quickstartText.anchor.set(0.5);
+    quickstartText.x = width / 2;
+    quickstartText.y = height * 0.7 + buttonHeight + 20;
+
+    // Make buttons interactive
     button.eventMode = 'static';
     button.cursor = 'pointer';
     
     button.on('mouseover', () => {
-      drawButton(true);
+      drawButton(button, true);
       buttonText.style.fill = '#ffffff';
     });
 
     button.on('mouseout', () => {
-      drawButton(false);
+      drawButton(button, false);
       buttonText.style.fill = '#00ff00';
     });
 
     button.on('click', () => {
       console.log('Begin button clicked');
       onBegin();
+    });
+
+    // Make quickstart button interactive
+    quickstartButton.eventMode = 'static';
+    quickstartButton.cursor = 'pointer';
+    
+    quickstartButton.on('mouseover', () => {
+      drawButton(quickstartButton, true);
+      quickstartText.style.fill = '#ffffff';
+    });
+
+    quickstartButton.on('mouseout', () => {
+      drawButton(quickstartButton, false);
+      quickstartText.style.fill = '#00ff00';
+    });
+
+    quickstartButton.on('click', () => {
+      console.log('Quickstart button clicked');
+      // TODO: Remove this test code in production
+      const factionNames = Object.keys(factions);
+      const testFactions = [factionNames[0], factionNames[1], factionNames[2]];
+      // Dispatch event to set game state directly to 'game'
+      window.dispatchEvent(new CustomEvent('setGameState', { detail: 'game' }));
+      // Dispatch event to set factions
+      window.dispatchEvent(new CustomEvent('setPlayerFactions', { detail: testFactions }));
     });
 
     // Placeholder for logo/pixel art
@@ -225,6 +266,8 @@ export const IntroScreen = ({ width, height, onBegin }: IntroScreenProps) => {
     app.stage.addChild(logoContainer);
     app.stage.addChild(button);
     app.stage.addChild(buttonText);
+    app.stage.addChild(quickstartButton);
+    app.stage.addChild(quickstartText);
 
     console.log('All elements added to stage');
 

@@ -25,7 +25,7 @@ interface GameScreenProps {
 }
 
 export interface GameScreenHandle {
-  spawnUnit: (type: 'Basic' | 'Advanced' | 'Special', position: OctagonPosition) => void;
+  spawnUnit: (type: 'Basic' | 'Advanced' | 'Special', position: OctagonPosition, faction: string) => void;
 }
 
 export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width, height, playerFactions }, ref) => {
@@ -72,7 +72,7 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
   };
 
   // Function to spawn a unit
-  const spawnUnit = (type: 'Basic' | 'Advanced' | 'Special', position: OctagonPosition) => {
+  const spawnUnit = (type: 'Basic' | 'Advanced' | 'Special', position: OctagonPosition, faction: string) => {
     if (!appRef.current || !unitsContainerRef.current || !gameContainerRef.current) return;
 
     const mapSize = Math.min(width, height);
@@ -88,27 +88,30 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
         spawnPosition = new Point(mapSize - cornerOffset, cornerOffset);
         break;
       case 'E':
-        spawnPosition = new Point(mapSize - cornerOffset, mapSize - cornerOffset);
+        spawnPosition = new Point(mapSize - cornerOffset, mapSize / 2);
         break;
       case 'SE':
-        spawnPosition = new Point(cornerOffset, mapSize - cornerOffset);
+        spawnPosition = new Point(mapSize - cornerOffset, mapSize - cornerOffset);
         break;
       case 'S':
-        spawnPosition = new Point(cornerOffset, cornerOffset);
+        spawnPosition = new Point(mapSize / 2, mapSize - cornerOffset);
         break;
       case 'SW':
-        spawnPosition = new Point(cornerOffset, cornerOffset);
+        spawnPosition = new Point(cornerOffset, mapSize - cornerOffset);
         break;
       case 'W':
-        spawnPosition = new Point(cornerOffset, cornerOffset);
+        spawnPosition = new Point(cornerOffset, mapSize / 2);
         break;
       case 'NW':
         spawnPosition = new Point(cornerOffset, cornerOffset);
         break;
     }
 
-    // Create new unit
-    const unit = new BaseUnit(playerFactions[0] as FactionType, type, spawnPosition);
+    // Create new unit with the specified faction
+    const capitalizedFaction = faction === 'rogue-ai' ? 'Rogue AI' : 
+      faction.charAt(0).toUpperCase() + faction.slice(1).replace(/-/g, ' ') as FactionType;
+    const playerIndex = playerFactions.indexOf(faction);
+    const unit = new BaseUnit(capitalizedFaction, type, spawnPosition, playerIndex);
     
     // Set initial target to center
     const centerPoint = new Point(mapSize / 2, mapSize / 2);
@@ -120,6 +123,7 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
 
     console.log('Spawned unit:', {
       type,
+      faction,
       corner: position,
       position: spawnPosition,
       target: centerPoint,
@@ -143,7 +147,7 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
     const app = new Application({
       width,
       height,
-      backgroundColor: 0x0a0a0a,
+      backgroundColor: 0x0a0a0a, // Back to dark background
       antialias: true,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
@@ -156,6 +160,24 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
     const gameContainer = new Container();
     gameContainerRef.current = gameContainer;
     app.stage.addChild(gameContainer);
+
+    // Create cyberpunk grid background
+    const background = new Graphics();
+    background.lineStyle(1, 0x00ff00, 0.3);
+    
+    // Draw vertical lines
+    for (let x = 0; x < width; x += 50) {
+      background.moveTo(x, 0);
+      background.lineTo(x, height);
+    }
+    
+    // Draw horizontal lines
+    for (let y = 0; y < height; y += 50) {
+      background.moveTo(0, y);
+      background.lineTo(width, y);
+    }
+    
+    gameContainer.addChild(background);
 
     // Create units container and add it AFTER the map elements
     const unitsContainer = new Container();
@@ -289,8 +311,8 @@ export const GameScreen = forwardRef<GameScreenHandle, GameScreenProps>(({ width
     <div 
       ref={containerRef} 
       style={{ 
-        width: '100%',
-        height: '100%',
+        width: `${width}px`,
+        height: `${height}px`,
         backgroundColor: '#0a0a0a',
         position: 'relative',
       }} 
