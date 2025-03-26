@@ -1,15 +1,33 @@
+/**
+ * BaseUnit Class
+ * 
+ * The core unit class that implements all unit behavior including:
+ * - Unit initialization and stats management
+ * - Visual representation (body and health bar)
+ * - Movement and pathfinding
+ * - Combat mechanics (targeting, attacking, damage)
+ * - Health management
+ * 
+ * This class serves as the foundation for all unit types in the game,
+ * providing common functionality while allowing for type-specific
+ * customization through inheritance.
+ */
+
 import { Container, Graphics, Point, Text } from 'pixi.js';
 import { IUnit, UnitStats, UnitState, FactionType, UnitType, BASE_UNIT_STATS, FACTION_MODIFIERS } from '../types/units';
 import { PLAYER_COLORS } from '../types/faction';
 import { v4 as uuidv4 } from 'uuid';
 
 export class BaseUnit extends Container implements IUnit {
-    private static readonly MIN_SEPARATION = 3; // Minimum distance between unit edges in pixels
-    private static readonly UNIT_SIZE = 20;     // Base size for unit visuals
+    // Static constants for unit configuration
+    private static readonly MIN_SEPARATION = 2; // Minimum distance between unit edges in pixels
+    private static readonly UNIT_SIZE = 12;     // Base size for unit visuals
     private static readonly TARGET_SEARCH_INTERVAL = 500; // ms between target searches
-    private static readonly CENTER_OFFSET = 15; // Small offset for center targeting
+    private static readonly CENTER_OFFSET = 10; // Small offset for center targeting
     private static readonly CONTROL_POINT_RADIUS = 80; // Match the castle marker radius
+    private static readonly DEATH_DELAY = 1000; // 1 second delay before removing dead units
 
+    // Unit properties
     id: string;
     faction: FactionType;
     type: UnitType;
@@ -18,11 +36,16 @@ export class BaseUnit extends Container implements IUnit {
     radius: number;
     playerIndex: number;
     
+    // Visual components
     private body: Graphics = new Graphics();
     private healthBar: Graphics = new Graphics();
+    
+    // Combat and movement tracking
     private lastAttackTime: number = 0;
     private lastTargetSearchTime: number = 0;
+    private deathTime: number | null = null;
 
+    // Constructor: Initialize unit with faction, type, position, and player index
     constructor(
         faction: FactionType,
         type: UnitType,
@@ -30,28 +53,57 @@ export class BaseUnit extends Container implements IUnit {
         playerIndex: number
     ) {
         super();
-        
+
+        // Set basic properties
         this.id = uuidv4();
         this.faction = faction;
         this.type = type;
         this.playerIndex = playerIndex;
-        
-        // Set radius based on unit size
         this.radius = BaseUnit.UNIT_SIZE / 2;
+
+        // Get base stats for unit type
+        const baseStats = BASE_UNIT_STATS[type];
+        if (!baseStats) {
+            throw new Error(`No base stats found for unit type: ${type}`);
+        }
+
+        // Calculate unit stats with faction modifiers
+        const defaultModifiers: UnitStats = {
+            health: 1.0,
+            maxHealth: 1.0,
+            damage: 1.0,
+            speed: 1.0,
+            range: 1.0,
+            attackSpeed: 1.0
+        };
+        const modifiers = FACTION_MODIFIERS[faction] || defaultModifiers;
+        const health = Math.round(baseStats.health * (modifiers.health || 1.0));
+        const maxHealth = Math.round(baseStats.maxHealth * (modifiers.health || 1.0));
+        const damage = Math.round(baseStats.damage * (modifiers.damage || 1.0));
+        const speed = baseStats.speed * (modifiers.speed || 1.0);
+        const range = Math.round(baseStats.range * (modifiers.range || 1.0));
+
+        // Log calculated stats for debugging
+        console.log('Calculated Stats:', {
+            health,
+            maxHealth,
+            damage,
+            speed,
+            range,
+            attackSpeed: baseStats.attackSpeed
+        });
         
-        // Apply faction modifiers to base stats
-        const baseStats = { ...BASE_UNIT_STATS[type] };
-        const modifiers = FACTION_MODIFIERS[faction];
-        
+        // Set unit stats
         this.stats = {
-            ...baseStats,
-            health: baseStats.health * (modifiers.health || 1),
-            damage: baseStats.damage * (modifiers.damage || 1),
-            speed: baseStats.speed * (modifiers.speed || 1),
-            range: baseStats.range * (modifiers.range || 1),
-            maxHealth: baseStats.maxHealth * (modifiers.health || 1)
+            health,
+            maxHealth,
+            damage,
+            speed,
+            range,
+            attackSpeed: baseStats.attackSpeed
         };
 
+        // Initialize unit state
         this.state = {
             position,
             targetPosition: null,
@@ -66,8 +118,44 @@ export class BaseUnit extends Container implements IUnit {
         
         // Set initial position
         this.position.set(position.x, position.y);
+
+        // Start moving towards center immediately
+        if (this.parent?.parent) {
+            const gameContainer = this.parent.parent;
+            const centerX = gameContainer.width / 2;
+            const centerY = gameContainer.height / 2;
+            const offsetX = (Math.random() - 0.5) * 20; // Small random offset
+            const offsetY = (Math.random() - 0.5) * 20;
+            console.log('=== Unit Initial Movement ===');
+            console.log('Unit Type:', type);
+            console.log('Current Position:', { x: position.x, y: position.y });
+            console.log('Target Position:', { x: centerX + offsetX, y: centerY + offsetY });
+            console.log('Game Container Size:', { width: gameContainer.width, height: gameContainer.height });
+            this.moveTo(new Point(centerX + offsetX, centerY + offsetY));
+        }
+        // If parent is not available yet, set up a small delay to try again
+        console.log('=== Unit Movement Delayed ===');
+        console.log('Parent container not available yet, will retry in 100ms');
+        setTimeout(() => {
+            if (this.parent?.parent) {
+                const gameContainer = this.parent.parent;
+                const centerX = gameContainer.width / 2;
+                const centerY = gameContainer.height / 2;
+                const offsetX = (Math.random() - 0.5) * 20;
+                const offsetY = (Math.random() - 0.5) * 20;
+                console.log('=== Unit Delayed Movement ===');
+                console.log('Unit Type:', type);
+                console.log('Current Position:', { x: this.position.x, y: this.position.y });
+                console.log('Target Position:', { x: centerX + offsetX, y: centerY + offsetY });
+                console.log('Game Container Size:', { width: gameContainer.width, height: gameContainer.height });
+                this.moveTo(new Point(centerX + offsetX, centerY + offsetY));
+            } else {
+                console.error('Failed to set initial movement - parent container still not available');
+            }
+        }, 100);
     }
 
+    // Initialize unit graphics (body and health bar)
     private initializeGraphics(): void {
         // Create unit body
         this.body = new Graphics();
@@ -80,6 +168,7 @@ export class BaseUnit extends Container implements IUnit {
         this.addChild(this.healthBar);
     }
 
+    // Draw unit body based on unit type
     private drawBody(): void {
         const size = BaseUnit.UNIT_SIZE;
         const color = this.getFactionColor();
@@ -89,27 +178,27 @@ export class BaseUnit extends Container implements IUnit {
         this.body.beginFill(0x000000);
         
         // Different shapes for different unit types
-        if (this.type.startsWith('Ranged')) {
+        if (this.type === 'Archer' || this.type === 'Sniper' || this.type === 'Artillery') {
             // Diamond shape for ranged units
             this.body.moveTo(0, -size/2);
             this.body.lineTo(size/2, 0);
             this.body.lineTo(0, size/2);
             this.body.lineTo(-size/2, 0);
             this.body.lineTo(0, -size/2);
-        } else if (this.type.startsWith('Support')) {
+        } else if (this.type === 'Medic' || this.type === 'Guardian' || this.type === 'Enchanter') {
             // Cross shape for support units
             this.body.drawRect(-size/6, -size/2, size/3, size); // Vertical
             this.body.drawRect(-size/2, -size/6, size, size/3); // Horizontal
         } else {
-            // Original shapes for melee units
+            // Melee units (Warrior, Knight, Berserker)
             switch (this.type) {
-                case 'Basic':
+                case 'Warrior':
                     this.body.drawCircle(0, 0, size / 2);
                     break;
-                case 'Advanced':
+                case 'Knight':
                     this.body.drawRect(-size/2, -size/2, size, size);
                     break;
-                case 'Special':
+                case 'Berserker':
                     this.body.moveTo(-size/2, size/2);
                     this.body.lineTo(0, -size/2);
                     this.body.lineTo(size/2, size/2);
@@ -121,29 +210,32 @@ export class BaseUnit extends Container implements IUnit {
         this.body.endFill();
     }
 
+    // Draw health bar above unit
     private drawHealthBar(): void {
-        const width = 30;
-        const height = 4;
+        const width = 20;
+        const height = 3;
         const healthPercentage = this.state.currentHealth / this.stats.maxHealth;
 
         this.healthBar.clear();
         
         // Background
         this.healthBar.beginFill(0x333333);
-        this.healthBar.drawRect(-width/2, -20, width, height);
+        this.healthBar.drawRect(-width/2, -14, width, height);
         this.healthBar.endFill();
         
         // Health
         this.healthBar.beginFill(0x00ff00);
-        this.healthBar.drawRect(-width/2, -20, width * healthPercentage, height);
+        this.healthBar.drawRect(-width/2, -14, width * healthPercentage, height);
         this.healthBar.endFill();
     }
 
+    // Get faction color for unit visuals
     private getFactionColor(): number {
         const colorKey = `player${this.playerIndex + 1}` as keyof typeof PLAYER_COLORS;
         return parseInt(PLAYER_COLORS[colorKey].replace('#', '0x'));
     }
 
+    // Search for enemy targets within range
     private searchForTargets(): void {
         if (!this.parent) return;
 
@@ -213,8 +305,18 @@ export class BaseUnit extends Container implements IUnit {
         }
     }
 
+    // Update unit state each frame
     update(delta: number): void {
-        if (this.state.isDead) return;
+        if (this.state.isDead) {
+            if (this.deathTime === null) {
+                this.deathTime = Date.now();
+            } else if (Date.now() - this.deathTime >= BaseUnit.DEATH_DELAY) {
+                // Remove the unit from its parent container
+                this.parent?.removeChild(this);
+                return;
+            }
+            return;
+        }
 
         const currentTime = Date.now();
 
@@ -248,6 +350,7 @@ export class BaseUnit extends Container implements IUnit {
         this.drawHealthBar();
     }
 
+    // Update unit movement towards target
     private updateMovement(delta: number): void {
         if (!this.state.targetPosition) return;
 
@@ -262,144 +365,104 @@ export class BaseUnit extends Container implements IUnit {
             return;
         }
 
-        // Get normalized direction to target
-        const dirX = dx / distance;
-        const dirY = dy / distance;
-
-        // Calculate separation force (avoid other units)
-        let separationX = 0;
-        let separationY = 0;
-        let neighborCount = 0;
-
-        // Get all units from parent container
-        const allUnits = (this.parent?.children || []) as BaseUnit[];
-        
-        for (const other of allUnits) {
-            if (other === this || !other.isAlive()) continue;
-
-            const offsetX = this.position.x - other.position.x;
-            const offsetY = this.position.y - other.position.y;
-            const sqDist = offsetX * offsetX + offsetY * offsetY;
-            
-            // Calculate minimum separation distance (edge to edge)
-            const minSeparation = BaseUnit.MIN_SEPARATION + this.radius + other.radius;
-            
-            if (sqDist < minSeparation * minSeparation && sqDist > 0) {
-                // Calculate separation vector
-                const d = Math.sqrt(sqDist);
-                // Stronger separation force when very close
-                const separationStrength = Math.max(0, 1 - (d / minSeparation));
-                separationX += (offsetX / d) * separationStrength;
-                separationY += (offsetY / d) * separationStrength;
-                neighborCount++;
-            }
-        }
-
-        // Apply separation if there are neighbors
-        if (neighborCount > 0) {
-            separationX /= neighborCount;
-            separationY /= neighborCount;
-            
-            // Normalize separation vector
-            const sepLength = Math.sqrt(separationX * separationX + separationY * separationY);
-            if (sepLength > 0) {
-                separationX /= sepLength;
-                separationY /= sepLength;
-            }
-        }
-
-        // Combine target direction with separation
-        // Reduce separation influence to allow units to get closer for combat
-        const separationWeight = 0.5; // Reduced from 1.0
-        const finalDirX = dirX + separationX * separationWeight;
-        const finalDirY = dirY + separationY * separationWeight;
-
-        // Normalize final direction
-        const finalLength = Math.sqrt(finalDirX * finalDirX + finalDirY * finalDirY);
-        const normalizedDirX = finalLength > 0 ? finalDirX / finalLength : dirX;
-        const normalizedDirY = finalLength > 0 ? finalDirY / finalLength : dirY;
-
-        // Apply movement
-        const speed = this.stats.speed * delta;
-        this.position.x += normalizedDirX * speed;
-        this.position.y += normalizedDirY * speed;
+        // Move towards target
+        const moveSpeed = this.stats.speed * delta;
+        const ratio = moveSpeed / distance;
+        this.position.x += dx * ratio;
+        this.position.y += dy * ratio;
+        this.state.position = this.position.clone();
     }
 
-    takeDamage(amount: number): void {
-        if (this.state.isDead) return;
-
-        this.state.currentHealth = Math.max(0, this.state.currentHealth - amount);
-        this.drawHealthBar();
-
-        if (this.state.currentHealth <= 0) {
-            this.state.isDead = true;
-            this.alpha = 0.5; // Visual indication of death
-        }
-    }
-
-    heal(amount: number): void {
-        if (this.state.isDead) return;
-
-        this.state.currentHealth = Math.min(
-            this.stats.maxHealth,
-            this.state.currentHealth + amount
-        );
-        this.drawHealthBar();
-    }
-
+    // Move unit to specified position
     moveTo(target: Point): void {
         this.state.targetPosition = target;
         this.state.isMoving = true;
     }
 
+    // Attack specified target
     attack(target: IUnit): void {
-        if (this.state.isDead || !this.isInRange(target)) return;
-
-        this.state.isAttacking = true;
         this.state.currentTarget = target;
-        
-        // If we haven't attacked yet, perform first attack immediately
-        if (this.lastAttackTime === 0) {
-            this.performAttack(target);
-            this.lastAttackTime = Date.now();
-        }
+        this.state.isAttacking = true;
     }
 
-    private performAttack(target: IUnit): void {
-        if (this.state.isDead) return;
+    // Check if target is within attack range
+    isInRange(target: IUnit): boolean {
+        const dx = target.getPosition().x - this.position.x;
+        const dy = target.getPosition().y - this.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance <= this.stats.range;
+    }
 
-        // Calculate damage variance based on unit type
-        const variance = this.type === 'Basic' ? 0.15 : 
-                        this.type === 'Advanced' ? 0.20 : 0.25;
-        
-        // Calculate min and max damage
-        const minDamage = Math.floor(this.stats.damage * (1 - variance));
-        const maxDamage = Math.floor(this.stats.damage * (1 + variance));
-        
-        // Generate random damage between min and max (inclusive)
-        const actualDamage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
-        
+    // Perform attack on target
+    performAttack(target: IUnit): void {
+        // Calculate damage with variance based on unit type
+        let variance = 0.1; // Default 10% variance
+        switch (this.type) {
+            case 'Warrior':
+                variance = 0.15; // 15% variance
+                break;
+            case 'Knight':
+                variance = 0.2; // 20% variance
+                break;
+            case 'Berserker':
+                variance = 0.25; // 25% variance
+                break;
+            case 'Archer':
+                variance = 0.1; // 10% variance
+                break;
+            case 'Sniper':
+                variance = 0.05; // 5% variance
+                break;
+            case 'Artillery':
+                variance = 0.3; // 30% variance
+                break;
+            case 'Medic':
+                variance = 0.1; // 10% variance
+                break;
+            case 'Guardian':
+                variance = 0.15; // 15% variance
+                break;
+            case 'Enchanter':
+                variance = 0.2; // 20% variance
+                break;
+        }
+
+        const minDamage = this.stats.damage * (1 - variance);
+        const maxDamage = this.stats.damage * (1 + variance);
+        const actualDamage = Math.round(minDamage + Math.random() * (maxDamage - minDamage));
+
+        // Apply damage to target
         target.takeDamage(actualDamage);
     }
 
+    // Take damage from attack
+    takeDamage(amount: number): void {
+        this.state.currentHealth -= amount;
+        if (this.state.currentHealth <= 0) {
+            this.state.currentHealth = 0;
+            this.state.isDead = true;
+        }
+    }
+
+    // Check if unit is alive
     isAlive(): boolean {
         return !this.state.isDead;
     }
 
-    isInRange(target: IUnit): boolean {
-        const targetPos = target.getPosition();
-        const dx = targetPos.x - this.position.x;
-        const dy = targetPos.y - this.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        return distance <= this.stats.range;
+    // Heal unit by specified amount
+    heal(amount: number): void {
+        if (this.state.isDead) return;
+        this.state.currentHealth = Math.min(this.stats.maxHealth, this.state.currentHealth + amount);
+        this.drawHealthBar();
     }
 
-    getPosition(): Point {
-        return new Point(this.position.x, this.position.y);
-    }
-
+    // Get unit's current health
     getHealth(): number {
         return this.state.currentHealth;
+    }
+
+    // Get unit's current position
+    getPosition(): Point {
+        return this.state.position;
     }
 } 
