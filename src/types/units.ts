@@ -10,11 +10,11 @@ export type FactionType = 'Netrunners' | 'Cyborgs' | 'Rogue AI';
 
 export type UnitType = 
   // Melee Units
-  'Basic' | 'Advanced' | 'Special' |
+  'Warrior' | 'Knight' | 'Berserker' |
   // Ranged Units
-  'RangedBasic' | 'RangedAdvanced' | 'RangedSpecial' |
+  'Archer' | 'Sniper' | 'Artillery' |
   // Support Units
-  'SupportBasic' | 'SupportAdvanced' | 'SupportSpecial';
+  'Medic' | 'Guardian' | 'Enchanter';
 
 export interface UnitStats {
   health: number;
@@ -62,77 +62,77 @@ export interface IUnit {
 // Base stats for each unit type
 export const BASE_UNIT_STATS: Record<UnitType, UnitStats> = {
     // Melee Units
-    Basic: {
+    Warrior: {
         health: 150,
         maxHealth: 150,
         damage: 65,
-        speed: 2,
+        speed: 12.5,
         range: 30,
         attackSpeed: 1.2
     },
-    Advanced: {
+    Knight: {
         health: 300,
         maxHealth: 300,
         damage: 100,
-        speed: 1.5,
+        speed: 9.4,
         range: 35,
         attackSpeed: 1.0
     },
-    Special: {
+    Berserker: {
         health: 400,
         maxHealth: 400,
         damage: 150,
-        speed: 1.8,
+        speed: 11.25,
         range: 40,
         attackSpeed: 1.5
     },
     // Ranged Units
-    RangedBasic: {
+    Archer: {
         health: 100,
         maxHealth: 100,
         damage: 45,
-        speed: 1.7,
+        speed: 10.6,
         range: 150,
         attackSpeed: 1.0
     },
-    RangedAdvanced: {
+    Sniper: {
         health: 120,
         maxHealth: 120,
         damage: 80,
-        speed: 1.4,
+        speed: 8.75,
         range: 200,
         attackSpeed: 0.8
     },
-    RangedSpecial: {
+    Artillery: {
         health: 150,
         maxHealth: 150,
         damage: 120,
-        speed: 1.2,
+        speed: 7.5,
         range: 250,
         attackSpeed: 0.6
     },
     // Support Units
-    SupportBasic: {
+    Medic: {
         health: 120,
         maxHealth: 120,
         damage: 20,
-        speed: 2.0,
+        speed: 12.5,
         range: 100,
         attackSpeed: 1.0
     },
-    SupportAdvanced: {
+    Guardian: {
         health: 180,
         maxHealth: 180,
         damage: 30,
-        speed: 1.7,
+        speed: 10.6,
         range: 120,
         attackSpeed: 0.8
     },
-    SupportSpecial: {
+    Enchanter: {
         health: 250,
         maxHealth: 250,
         damage: 40,
-        speed: 1.5,
+        speed: 9.4,
         range: 150,
         attackSpeed: 0.7
     }

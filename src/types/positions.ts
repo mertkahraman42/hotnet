@@ -16,16 +16,16 @@ export const PLAYER_POSITIONS: Record<ValidPlayerCount, OctagonPosition[]> = {
 } as const;
 
 // Define angles in radians for each position
-// Starting from N as 0 and going clockwise
+// Rotated by -22.5° (-π/8) to align cardinal directions with sides
 export const POSITION_ANGLES: Record<OctagonPosition, number> = {
-    'N': 0,                // 0° (top)
-    'NE': Math.PI / 4,     // 45°
-    'E': Math.PI / 2,      // 90° (right)
-    'SE': 3 * Math.PI / 4, // 135°
-    'S': Math.PI,          // 180° (bottom)
-    'SW': -3 * Math.PI / 4,// -135°
-    'W': -Math.PI / 2,     // -90° (left)
-    'NW': -Math.PI / 4     // -45°
+    'N': -5 * Math.PI / 8,  // -112.5° (top)
+    'NE': -3 * Math.PI / 8, // -67.5° (top-right corner)
+    'E': -Math.PI / 8,      // -22.5° (right)
+    'SE': Math.PI / 8,      // 22.5° (bottom-right corner)
+    'S': 3 * Math.PI / 8,   // 67.5° (bottom)
+    'SW': 5 * Math.PI / 8,  // 112.5° (bottom-left corner)
+    'W': 7 * Math.PI / 8,   // 157.5° (left)
+    'NW': -7 * Math.PI / 8  // -157.5° (top-left corner)
 } as const;
 
 export const POSITION_PRIORITY: OctagonPosition[][] = [
@@ -33,7 +33,7 @@ export const POSITION_PRIORITY: OctagonPosition[][] = [
     ['E'],  // 1 player
     ['E', 'W'],  // 2 players
     ['E', 'SW', 'NW'],  // 3 players
-    ['N', 'E', 'S', 'W'],  // 4 players
+    ['SW', 'NW', 'NE', 'SE'],  // 4 players - updated to match PLAYER_POSITIONS
     ['N', 'E', 'SE', 'SW', 'W'],  // 5 players
     ['N', 'NE', 'SE', 'S', 'SW', 'NW'],  // 6 players
     ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W'],  // 7 players

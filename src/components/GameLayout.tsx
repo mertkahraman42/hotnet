@@ -5,14 +5,14 @@ import { UnitType, FactionType } from '../types/units';
 
 // Define position priority for different numbers of players
 export const POSITION_PRIORITY = {
-  1: ['N'],
-  2: ['N', 'S'],
-  3: ['NW', 'SE', 'SW'],
-  4: ['N', 'E', 'S', 'W'],
-  5: ['N', 'NE', 'SE', 'SW', 'NW'],
-  6: ['N', 'NE', 'SE', 'S', 'SW', 'NW'],
-  7: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'NW'],
-  8: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+  1: ['E'],
+  2: ['W', 'E'],
+  3: ['SW', 'NW', 'E'],
+  4: ['SW', 'NW', 'NE', 'SE'],
+  5: ['SW', 'NW', 'W', 'SE', 'NE'],
+  6: ['SW', 'NW', 'W', 'SE', 'NE', 'E'],
+  7: ['SW', 'NW', 'W', 'N', 'S', 'NE', 'SE'],
+  8: ['SW', 'NW', 'W', 'N', 'S', 'NE', 'SE', 'E']
 } as const;
 
 interface GameLayoutProps {
@@ -25,53 +25,53 @@ interface GameLayoutProps {
 
 const UNIT_COSTS: Record<UnitType, number> = {
   // Melee Units
-  Basic: 100,
-  Advanced: 300,
-  Special: 500,
+  Warrior: 100,
+  Knight: 300,
+  Berserker: 500,
   // Ranged Units
-  RangedBasic: 150,
-  RangedAdvanced: 350,
-  RangedSpecial: 600,
+  Archer: 150,
+  Sniper: 350,
+  Artillery: 600,
   // Support Units
-  SupportBasic: 200,
-  SupportAdvanced: 400,
-  SupportSpecial: 550
+  Medic: 200,
+  Guardian: 400,
+  Enchanter: 550
 };
 
 const UNIT_INFO: Record<UnitType, { name: string, description: string }> = {
-  Basic: { 
+  Warrior: { 
     name: "Warrior",
     description: "Balanced melee fighter with good speed and moderate health. Deals consistent damage in close combat."
   },
-  Advanced: {
+  Knight: {
     name: "Knight",
     description: "Heavy melee unit with high health and strong defense. Slower but deals significant damage."
   },
-  Special: {
+  Berserker: {
     name: "Berserker",
     description: "Elite melee unit with very high damage and attack speed. Can quickly eliminate targets in combat."
   },
-  RangedBasic: {
+  Archer: {
     name: "Archer",
     description: "Basic ranged unit with good mobility. Attacks from a safe distance with moderate damage."
   },
-  RangedAdvanced: {
+  Sniper: {
     name: "Sniper",
     description: "Specialized ranged unit with extreme range and high single-target damage. Low health but very effective."
   },
-  RangedSpecial: {
+  Artillery: {
     name: "Artillery",
     description: "Heavy ranged unit with massive damage potential. Slow but devastating at maximum range."
   },
-  SupportBasic: {
+  Medic: {
     name: "Medic",
     description: "Fast support unit that can heal allies. Essential for maintaining army health in prolonged battles."
   },
-  SupportAdvanced: {
+  Guardian: {
     name: "Guardian",
     description: "Defensive support unit with protective abilities. Helps keep other units alive in combat."
   },
-  SupportSpecial: {
+  Enchanter: {
     name: "Enchanter",
     description: "Elite support unit with powerful enhancement abilities. Can turn the tide of battle with buffs."
   }
@@ -277,25 +277,25 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, playerFac
     {
       title: '⚔️ Melee',
       units: [
-        { type: 'Basic' as UnitType, icon: '🗡️', name: 'Warrior' },
-        { type: 'Advanced' as UnitType, icon: '🛡️', name: 'Knight' },
-        { type: 'Special' as UnitType, icon: '⚔️', name: 'Berserker' }
+        { type: 'Warrior' as UnitType, icon: '🗡️', name: 'Warrior' },
+        { type: 'Knight' as UnitType, icon: '🛡️', name: 'Knight' },
+        { type: 'Berserker' as UnitType, icon: '⚔️', name: 'Berserker' }
       ]
     },
     {
       title: '🏹 Ranged',
       units: [
-        { type: 'RangedBasic' as UnitType, icon: '🏹', name: 'Archer' },
-        { type: 'RangedAdvanced' as UnitType, icon: '🎯', name: 'Sniper' },
-        { type: 'RangedSpecial' as UnitType, icon: '💣', name: 'Artillery' }
+        { type: 'Archer' as UnitType, icon: '🏹', name: 'Archer' },
+        { type: 'Sniper' as UnitType, icon: '🎯', name: 'Sniper' },
+        { type: 'Artillery' as UnitType, icon: '💣', name: 'Artillery' }
       ]
     },
     {
       title: '🔮 Support',
       units: [
-        { type: 'SupportBasic' as UnitType, icon: '💉', name: 'Medic' },
-        { type: 'SupportAdvanced' as UnitType, icon: '🛡️', name: 'Guardian' },
-        { type: 'SupportSpecial' as UnitType, icon: '✨', name: 'Enchanter' }
+        { type: 'Medic' as UnitType, icon: '💉', name: 'Medic' },
+        { type: 'Guardian' as UnitType, icon: '🛡️', name: 'Guardian' },
+        { type: 'Enchanter' as UnitType, icon: '✨', name: 'Enchanter' }
       ]
     }
   ];
@@ -331,7 +331,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, playerFac
           onClick={() => {
             console.log('Big Combat button clicked');
             // For each faction
-            playerFactions.forEach((faction) => {
+            playerFactions.forEach((faction, factionIndex) => {
               console.log('Spawning units for faction:', faction);
               // Random number between 5-8 (reduced from 10-15)
               const count = Math.floor(Math.random() * 4) + 5;
@@ -340,13 +340,13 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ width, height, playerFac
               // Spawn random units
               for (let i = 0; i < count; i++) {
                 const unitTypes = [
-                  'Basic', 'Advanced', 'Special',
-                  'RangedBasic', 'RangedAdvanced', 'RangedSpecial',
-                  'SupportBasic', 'SupportAdvanced', 'SupportSpecial'
+                  'Warrior', 'Knight', 'Berserker',  // Melee
+                  'Archer', 'Sniper', 'Artillery',   // Ranged
+                  'Medic', 'Guardian', 'Enchanter'   // Support
                 ] as UnitType[];
                 const randomType = unitTypes[Math.floor(Math.random() * unitTypes.length)];
                 console.log('Spawning unit:', { type: randomType, faction });
-                handleSpawnUnit(randomType, Math.floor(Math.random() * playerFactions.length), faction);
+                handleSpawnUnit(randomType, factionIndex, faction);
               }
             });
           }}
